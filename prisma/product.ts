@@ -20,12 +20,10 @@ const productData: Prisma.productsCreateInput[] = Array.apply(
 async function main() {
   await prisma.products.deleteMany({})
 
-  for (const p of productData) {
-    const product = await prisma.products.create({
-      data: p,
-    })
-    console.log(`Created id: ${product.id}`)
-  }
+  const product = await prisma.products.create({
+    data: productData,
+  })
+  console.log(`Created id: ${product.id}`)
 }
 
 main()

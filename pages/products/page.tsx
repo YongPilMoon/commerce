@@ -8,12 +8,14 @@ import styled from '@emotion/styled'
 import { IconAt, IconSearch } from '@tabler/icons'
 import useDebounce from '../../hooks/useDebounce'
 import { useQuery } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
 
 const ContainerStyle = styled.div`
   width: 940px;
 `
 
 function Products() {
+  const { data: session } = useSession()
   const [activePage, setPage] = useState(1)
   // const [total, setTotal] = useState(0)
   // const [categories, setCategories] = useState<categories[]>([])
@@ -98,6 +100,7 @@ function Products() {
 
   return (
     <ContainerStyle className="mt-36 mb-36 m-auto">
+      {session && <p>안녕하세요. {session.user?.name}님</p>}
       <div className="mb-4">
         <Input
           icon={<IconSearch />}

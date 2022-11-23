@@ -224,26 +224,29 @@ const pants = [
 async function main() {
   await prisma.products.deleteMany({})
 
-  for (const p of sneakers) {
-    const product = await prisma.products.create({
-      data: p,
-    })
-    console.log(`Created id: ${product.id}`)
-  }
+  const CATEGORIES = ['SNEAKERS', 'T-SHIRTS', 'PANTS', 'CAP', 'HOODIE']
 
-  for (const p of tshirts) {
-    const product = await prisma.products.create({
-      data: p,
+  CATEGORIES.forEach(async (c, i) => {
+    const product = await prisma.categories.upsert({
+      where: {
+        id: i + 1,
+      },
+      update: {
+        name: c,
+      },
+      create: {
+        name: c,
+      },
     })
-    console.log(`Created id: ${product.id}`)
-  }
+  })
 
-  for (const p of pants) {
-    const product = await prisma.products.create({
-      data: p,
-    })
-    console.log(`Created id: ${product.id}`)
-  }
+  const productData = [...sneakers, ...tshirts, ...pants]
+
+  await prisma.products.createMany({
+    data: productData,
+  })
+
+  console.log('done')
 }
 
 main()
