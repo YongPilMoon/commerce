@@ -1,10 +1,12 @@
 import { categories, products } from '@prisma/client'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { Pagination, SegmentedControl, Select } from '@mantine/core'
+import { ChangeEventHandler, useEffect, useState } from 'react'
+import { Input, Pagination, SegmentedControl, Select } from '@mantine/core'
 import { FILTERS, TAKE } from 'constants/products'
 import { CATEGORY_MAP } from '../../constants/products'
 import styled from '@emotion/styled'
+import { IconAt, IconSearch } from '@tabler/icons'
+import useDebounce from '../../hooks/useDebounce'
 
 const ContainerStyle = styled.div`
   width: 940px;
@@ -17,6 +19,9 @@ function Products() {
   const [selectedCategory, setCategory] = useState<string>('-1')
   const [products, setProducts] = useState<products[]>([])
   const [selectedFilter, setFilter] = useState<string | null>(FILTERS[0].value)
+  const [keyword, setKeyword] = useState('')
+
+  const debouncedKeyword = useDebounce<string>(keyword)
 
   useEffect(() => {
     fetch(`/api/get-categories`)
@@ -25,22 +30,36 @@ function Products() {
   }, [])
 
   useEffect(() => {
-    fetch(`/api/get-products-count?category=${selectedCategory}`)
+    fetch(
+      `/api/get-products-count?category=${selectedCategory}&contains=${debouncedKeyword}`
+    )
       .then((res) => res.json())
       .then((data) => setTotal(Math.ceil(data.items / TAKE)))
-  }, [selectedCategory])
+  }, [selectedCategory, debouncedKeyword])
 
   useEffect(() => {
     const skip = TAKE * (activePage - 1)
     fetch(
-      `/api/get-products?skip=${skip}&take=${TAKE}&category=${selectedCategory}&orderBy=${selectedFilter}`
+      `/api/get-products?skip=${skip}&take=${TAKE}&category=${selectedCategory}&orderBy=${selectedFilter}&contains=${debouncedKeyword}`
     )
       .then((res) => res.json())
       .then((data) => setProducts(data.items))
-  }, [activePage, selectedCategory, selectedFilter])
+  }, [activePage, selectedCategory, selectedFilter, debouncedKeyword])
+
+  const handleChange: ChangeEventHandler<HTMLInputElement> = (e) => {
+    setKeyword(e.target.value)
+  }
 
   return (
     <ContainerStyle className="mt-36 mb-36 m-auto">
+      <div className="mb-4">
+        <Input
+          icon={<IconSearch />}
+          placeholder="Search"
+          value={keyword}
+          onChange={handleChange}
+        />
+      </div>
       <div className="mb-4">
         <Select value={selectedFilter} onChange={setFilter} data={FILTERS} />
       </div>
