@@ -1,7 +1,7 @@
 import { products } from '@prisma/client'
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-const TAKE = 9
+import { TAKE } from 'constants/products'
 
 function Products() {
   const [skip, setSkip] = useState(0)
@@ -31,12 +31,10 @@ function Products() {
           {products.map((item) => (
             <div key={item.id}>
               <Image
+                fill
                 className="rounded"
                 alt={item.name}
                 src={item.image_url ?? ''}
-                width={300}
-                height={200}
-                layout="responsive"
               />
               <div className="flex">
                 <span>{item.name}</span>
