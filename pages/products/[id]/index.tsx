@@ -10,8 +10,9 @@ import { format } from 'date-fns'
 import { CATEGORY_MAP } from 'constants/products'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@mantine/core'
-import { IconHeart, IconHeartbeat } from '@tabler/icons'
+import { IconHeart, IconHeartbeat, IconShoppingCart } from '@tabler/icons'
 import { useSession } from 'next-auth/react'
+import CountControl from '@/components/CountControl'
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const product = await fetch(
@@ -31,6 +32,8 @@ const WISHLIST_QUERY_KEY = '/api/get-wishlist'
 function Products(props: { product: products & { images: string[] } }) {
   const [index, setIndex] = useState(0)
   const { data: session } = useSession()
+  const [quantity, setQuantity] = useState<number | undefined>(1)
+
   const router = useRouter()
   const queryClient = useQueryClient()
   const { id: productId } = router.query
@@ -84,6 +87,18 @@ function Products(props: { product: products & { images: string[] } }) {
       },
     }
   )
+
+  const validate = (type: 'cart' | 'order') => {
+    if (quantity == null) {
+      alert('최소 수량을 선택하세요')
+      return
+    }
+
+    // Todo 장바구니에 등록하는 기능 추가
+
+    router.push('/cart')
+  }
+
   const product = props.product
 
   const isWished = wishlist ? wishlist.includes(productId) : false
@@ -129,32 +144,56 @@ function Products(props: { product: products & { images: string[] } }) {
             <div className="text-lg">
               {product.price.toLocaleString('ko-kr')}원
             </div>
-            <Button
-              // loading={isLoading}
-              disabled={wishlist == null}
-              leftIcon={
-                isWished ? (
-                  <IconHeartbeat size={20} stroke={1.5} />
-                ) : (
-                  <IconHeart size={20} stroke={1.5} />
-                )
-              }
-              style={{ backgroundColor: isWished ? 'red' : 'grey' }}
-              radius="xl"
-              size="md"
-              styles={{
-                root: { paddingRight: 14, height: 48 },
-              }}
-              onClick={() => {
-                if (session == null) {
-                  alert('로그인이 필요해요.')
-                  router.push('/auth/login')
+            <div>
+              <span className="text-lg">수량</span>
+              <CountControl value={quantity} setValue={setQuantity} />
+            </div>
+            <div className="flex space-x-3">
+              <Button
+                leftIcon={<IconShoppingCart size={20} stroke={1.5} />}
+                style={{ backgroundColor: 'black' }}
+                radius="xl"
+                size="md"
+                styles={{
+                  root: { paddingRight: 14, height: 48 },
+                }}
+                onClick={() => {
+                  if (session == null) {
+                    alert('로그인이 필요해요.')
+                    router.push('/auth/login')
+                  }
+                  validate('cart')
+                }}
+              >
+                장바구니
+              </Button>
+              <Button
+                // loading={isLoading}
+                disabled={wishlist == null}
+                leftIcon={
+                  isWished ? (
+                    <IconHeartbeat size={20} stroke={1.5} />
+                  ) : (
+                    <IconHeart size={20} stroke={1.5} />
+                  )
                 }
-                mutate(String(productId))
-              }}
-            >
-              찜하기
-            </Button>
+                style={{ backgroundColor: isWished ? 'red' : 'grey' }}
+                radius="xl"
+                size="md"
+                styles={{
+                  root: { paddingRight: 14, height: 48 },
+                }}
+                onClick={() => {
+                  if (session == null) {
+                    alert('로그인이 필요해요.')
+                    router.push('/auth/login')
+                  }
+                  mutate(String(productId))
+                }}
+              >
+                찜하기
+              </Button>
+            </div>
             <div className="text-sm text-zinc-300">
               등록: {format(new Date(product.createdAt), 'yyyy년 MM월 dd일')}
             </div>
