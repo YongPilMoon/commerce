@@ -54,7 +54,7 @@ function Products() {
   //     .then((data) => setTotal(Math.ceil(data.items / TAKE)))
   // }, [selectedCategory, debouncedKeyword])
 
-  const { data: total } = useQuery<number, unknown, number>(
+  const { data: total = 0 } = useQuery<number, unknown, number>(
     [
       `/api/get-products-count?category=${selectedCategory}&contains=${debouncedKeyword}`,
     ],
