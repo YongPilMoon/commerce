@@ -91,7 +91,7 @@ function Products(props: { product: products & { images: string[] } }) {
   return (
     <>
       {product != null && productId != null ? (
-        <div className="p-24 flex">
+        <div className="flex">
           <div style={{ width: 600 }}>
             <Carousel
               animation="fade"

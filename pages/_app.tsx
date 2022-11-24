@@ -1,8 +1,9 @@
 import '../styles/globals.css'
 import type { AppProps } from 'next/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-// import { GoogleOAuthProvider } from '@react-oauth/google'
+
 import { SessionProvider } from 'next-auth/react'
+import Header from '@/components/Header'
 
 export default function App({
   Component,
@@ -16,7 +17,10 @@ export default function App({
   return (
     <SessionProvider session={session}>
       <QueryClientProvider client={queryClient}>
-        <Component {...pageProps} />
+        <div className="m-auto" style={{ width: 940 }}>
+          <Header />
+          <Component {...pageProps} />
+        </div>
       </QueryClientProvider>
     </SessionProvider>
   )
