@@ -1,59 +1,43 @@
 import CountControl from '@/components/CountControl'
 import Image from 'next/image'
 import { useState, useEffect, useMemo } from 'react'
-import { IconRefresh, IconX, IconShoppingCart } from '@tabler/icons'
+import { IconRefresh, IconX } from '@tabler/icons'
 import styled from '@emotion/styled'
 import { Button } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
-import { products } from '@prisma/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { products, Cart } from '@prisma/client'
 import { useRouter } from 'next/router'
 import { CATEGORY_MAP } from 'constants/products'
 
-interface CartItem {
+interface CartItem extends Cart {
   name: string
-  productId: number
   price: number
-  quantity: number
-  amount: number
   image_url: string
 }
 
-const Cart = () => {
-  const router = useRouter()
-  const [data, setData] = useState<CartItem[]>([])
+export const CART_QUERY_KEY = `/api/get-cart`
 
-  const diliveryAmount = 5000
+const CartPage = () => {
+  const router = useRouter()
+
+  const { data } = useQuery<{ items: CartItem[] }, unknown, CartItem[]>(
+    [CART_QUERY_KEY],
+    () =>
+      fetch(CART_QUERY_KEY).then((res) => res.json().then((data) => data.items))
+  )
+
+  const diliveryAmount = data && data.length > 0 ? 5000 : 0
   const discountAmount = 0
+
   const amount = useMemo(() => {
+    if (data == null) {
+      return 0
+    }
+
     return data
       .map((item) => item.amount)
       .reduce((prev, curr) => prev + curr, 0)
   }, [data])
-
-  useEffect(() => {
-    const mockData = [
-      {
-        name: '멋드러진 신발',
-        productId: 100,
-        price: 20000,
-        quantity: 1,
-        amount: 20000,
-        image_url:
-          'https://i.ebayimg.com/thumbs/images/g/J7wAAOSwt~1jdNUk/s-l225.webp',
-      },
-      {
-        name: '멋드러진 티',
-        productId: 100,
-        price: 30000,
-        quantity: 2,
-        amount: 60000,
-        image_url:
-          'https://i.ebayimg.com/thumbs/images/g/PM4AAOSwbRhjduqr/s-l225.webp',
-      },
-    ]
-
-    setData(mockData)
-  }, [])
 
   const { data: products } = useQuery<
     { items: products[] },
@@ -73,13 +57,17 @@ const Cart = () => {
 
   return (
     <div>
-      <span className="text-2x; mb-3">Cart ({data.length})</span>
+      <span className="text-2x; mb-3">Cart ({data ? data.length : 0})</span>
       <div className="flex">
         <div className="flex flex-col p-4 space-y-4 flex-1">
-          {data?.length > 0 ? (
-            data.map((item, idx) => <Item key={idx} {...item} />)
+          {data ? (
+            data?.length > 0 ? (
+              data.map((item, idx) => <Item key={idx} {...item} />)
+            ) : (
+              <div>장바구니에 아무것도 없습니다.</div>
+            )
           ) : (
-            <div>장바구니에 아무것도 없습니다.</div>
+            <div>불러오는 중...</div>
           )}
         </div>
         <div className="px-4">
@@ -163,6 +151,7 @@ const Cart = () => {
 
 const Item = (props: CartItem) => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [quantity, setQuantity] = useState<number | undefined>(props.quantity)
   const [amount, setAmount] = useState<number>(props.quantity)
 
@@ -172,13 +161,76 @@ const Item = (props: CartItem) => {
     }
   }, [quantity, props.price])
 
+  const { mutate: updateCart } = useMutation<unknown, unknown, Cart, any>(
+    (item) =>
+      fetch('/api/update-cart', {
+        method: 'POST',
+        body: JSON.stringify({ item }),
+      })
+        .then((data) => data.json())
+        .then((res) => res.items),
+    {
+      onMutate: async (item) => {
+        await queryClient.cancelQueries([CART_QUERY_KEY])
+
+        const previous = queryClient.getQueryData([CART_QUERY_KEY])
+
+        queryClient.setQueryData<Cart[]>([CART_QUERY_KEY], (old) =>
+          old?.filter((c) => c.id !== item.id).concat(item)
+        )
+
+        // Return a context object with the snapshotted value
+        return { previous }
+      },
+      onError: (error, _, context) => {
+        queryClient.setQueryData([CART_QUERY_KEY], context.previous)
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries([CART_QUERY_KEY])
+      },
+    }
+  )
+
+  const { mutate: deleteCart } = useMutation<unknown, unknown, number, any>(
+    (id) =>
+      fetch('/api/delete-cart', {
+        method: 'POST',
+        body: JSON.stringify({ id }),
+      })
+        .then((data) => data.json())
+        .then((res) => res.items),
+    {
+      onMutate: async (id) => {
+        await queryClient.cancelQueries([CART_QUERY_KEY])
+
+        const previous = queryClient.getQueryData([CART_QUERY_KEY])
+
+        queryClient.setQueryData<Cart[]>([CART_QUERY_KEY], (old) =>
+          old?.filter((c) => c.id !== id)
+        )
+
+        // Return a context object with the snapshotted value
+        return { previous }
+      },
+      onError: (error, _, context) => {
+        queryClient.setQueryData([CART_QUERY_KEY], context.previous)
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries([CART_QUERY_KEY])
+      },
+    }
+  )
+
   const handleUpdate = () => {
-    // Todo 장바구니에서 삭제 기능 구현
-    alert(`장바구니에서 ${props.name} 삭제`)
+    if (quantity == null) {
+      alert('최소 수량을 입력하세요')
+      return
+    }
+    updateCart({ ...props, quantity, amount: props.price * quantity })
   }
 
-  const handleDelete = () => {
-    // Todo 장바구니에서 삭제 기능 구현
+  const handleDelete = async () => {
+    await deleteCart(props.id)
     alert(`장바구니에서 ${props.name} 삭제`)
   }
 
@@ -209,7 +261,7 @@ const Item = (props: CartItem) => {
   )
 }
 
-export default Cart
+export default CartPage
 
 const Row = styled.div`
   display: flex;

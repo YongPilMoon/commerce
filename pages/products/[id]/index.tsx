@@ -5,7 +5,7 @@ import CustomEditor from '@/components/Editor'
 import { useRouter } from 'next/router'
 import { convertFromRaw, convertToRaw, EditorState } from 'draft-js'
 import { GetServerSideProps, GetServerSidePropsContext } from 'next'
-import { products } from '@prisma/client'
+import { products, Cart } from '@prisma/client'
 import { format } from 'date-fns'
 import { CATEGORY_MAP } from 'constants/products'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import { Button } from '@mantine/core'
 import { IconHeart, IconHeartbeat, IconShoppingCart } from '@tabler/icons'
 import { useSession } from 'next-auth/react'
 import CountControl from '@/components/CountControl'
+import { CART_QUERY_KEY } from '../../cart'
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const product = await fetch(
@@ -88,6 +89,29 @@ function Products(props: { product: products & { images: string[] } }) {
     }
   )
 
+  const { mutateAsync: addCart } = useMutation<
+    unknown,
+    unknown,
+    Omit<Cart, 'id' | 'userId'>,
+    any
+  >(
+    (item) =>
+      fetch('/api/add-cart', {
+        method: 'POST',
+        body: JSON.stringify({ item }),
+      }),
+    {
+      onMutate: () => {
+        queryClient.invalidateQueries([CART_QUERY_KEY])
+      },
+      onSuccess: () => {
+        router.push('/cart')
+      },
+    }
+  )
+
+  const product = props.product
+
   const validate = (type: 'cart' | 'order') => {
     if (quantity == null) {
       alert('최소 수량을 선택하세요')
@@ -96,10 +120,14 @@ function Products(props: { product: products & { images: string[] } }) {
 
     // Todo 장바구니에 등록하는 기능 추가
 
-    router.push('/cart')
+    if (type === 'cart') {
+      addCart({
+        productId: product.id,
+        quantity,
+        amount: product.price * quantity,
+      })
+    }
   }
-
-  const product = props.product
 
   const isWished = wishlist ? wishlist.includes(productId) : false
 
