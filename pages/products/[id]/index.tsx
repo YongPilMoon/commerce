@@ -5,7 +5,7 @@ import CustomEditor from '@/components/Editor'
 import { useRouter } from 'next/router'
 import { convertFromRaw, convertToRaw, EditorState } from 'draft-js'
 import { GetServerSideProps, GetServerSidePropsContext } from 'next'
-import { products, Cart } from '@prisma/client'
+import { products, Cart, OrderItem } from '@prisma/client'
 import { format } from 'date-fns'
 import { CATEGORY_MAP } from 'constants/products'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -14,6 +14,7 @@ import { IconHeart, IconHeartbeat, IconShoppingCart } from '@tabler/icons'
 import { useSession } from 'next-auth/react'
 import CountControl from '@/components/CountControl'
 import { CART_QUERY_KEY } from '../../cart'
+import { ORDER_QUERY_KEY } from 'pages/my'
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
   const product = await fetch(
@@ -110,6 +111,27 @@ function Products(props: { product: products & { images: string[] } }) {
     }
   )
 
+  const { mutateAsync: addOrder } = useMutation<
+    unknown,
+    unknown,
+    Omit<OrderItem, 'id'>[],
+    any
+  >(
+    (items) =>
+      fetch('/api/add-order', {
+        method: 'POST',
+        body: JSON.stringify({ items }),
+      }),
+    {
+      onMutate: () => {
+        queryClient.invalidateQueries([ORDER_QUERY_KEY])
+      },
+      onSuccess: () => {
+        router.push('/my')
+      },
+    }
+  )
+
   const product = props.product
 
   const validate = (type: 'cart' | 'order') => {
@@ -118,14 +140,23 @@ function Products(props: { product: products & { images: string[] } }) {
       return
     }
 
-    // Todo 장바구니에 등록하는 기능 추가
-
     if (type === 'cart') {
       addCart({
         productId: product.id,
         quantity,
         amount: product.price * quantity,
       })
+    }
+
+    if (type === 'order') {
+      addOrder([
+        {
+          productId: product.id,
+          quantity,
+          price: product.price,
+          amount: product.price * quantity,
+        },
+      ])
     }
   }
 
@@ -222,6 +253,23 @@ function Products(props: { product: products & { images: string[] } }) {
                 찜하기
               </Button>
             </div>
+            <Button
+              style={{ backgroundColor: 'black', width: 240 }}
+              radius="xl"
+              size="md"
+              styles={{
+                root: { paddingRight: 14, height: 48 },
+              }}
+              onClick={() => {
+                if (session == null) {
+                  alert('로그인이 필요해요.')
+                  router.push('/auth/login')
+                }
+                validate('order')
+              }}
+            >
+              구매하기
+            </Button>
             <div className="text-sm text-zinc-300">
               등록: {format(new Date(product.createdAt), 'yyyy년 MM월 dd일')}
             </div>

@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { PrismaClient, Cart } from '@prisma/client'
 import { unstable_getServerSession } from 'next-auth'
 import { authOptions } from './auth/[...nextauth]'
-import { createNull } from 'typescript'
 
 const prisma = new PrismaClient()
 
