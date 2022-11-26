@@ -19,7 +19,7 @@ function CountControl({ value, setValue }: CountControlProps) {
       <ActionIcon
         size={42}
         variant="default"
-        onClick={() => handlers.current.decrement()}
+        onClick={() => handlers.current?.decrement()}
       >
         –
       </ActionIcon>
@@ -39,7 +39,7 @@ function CountControl({ value, setValue }: CountControlProps) {
       <ActionIcon
         size={42}
         variant="default"
-        onClick={() => handlers.current.increment()}
+        onClick={() => handlers.current?.increment()}
       >
         +
       </ActionIcon>
