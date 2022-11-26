@@ -11,6 +11,7 @@ const nextConfig = {
       'raw.githubusercontent.com',
       'i.ebayimg.com',
       'lh3.googleusercontent.com',
+      'i.ibb.co',
     ],
   },
 }

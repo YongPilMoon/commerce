@@ -1,10 +1,13 @@
 import { useRouter } from 'next/router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, ChangeEventHandler } from 'react'
 import CustomEditor from '../../components/Editor'
 import { EditorState, convertFromRaw, convertToRaw } from 'draft-js'
-import { Slider } from '@mantine/core'
+import { Button, Slider } from '@mantine/core'
+import AutoSizeImage from '@/components/AutoSizeImage'
 
 const CommentEdit = () => {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [images, setImages] = useState<string[]>([])
   const router = useRouter()
   const [rate, setRate] = useState(5)
   const { orderItemId } = router.query
@@ -23,6 +26,7 @@ const CommentEdit = () => {
               )
             )
             setRate(data.items.rate)
+            setImages(data.items.images.split(',') ?? [])
           } else {
             setEditorState(EditorState.createEmpty())
           }
@@ -40,7 +44,7 @@ const CommentEdit = () => {
           contents: JSON.stringify(
             convertToRaw(editorState.getCurrentContent())
           ),
-          images: [],
+          images: images.join(','),
         }),
       })
         .then((res) => res.json())
@@ -48,6 +52,41 @@ const CommentEdit = () => {
           alert('Success')
           router.back()
         })
+    }
+  }
+
+  const handleChange: ChangeEventHandler = () => {
+    if (
+      inputRef.current &&
+      inputRef.current.files &&
+      inputRef.current.files.length > 0
+    ) {
+      for (let i = 0; i < inputRef.current.files.length; i++) {
+        const fd = new FormData()
+        console.log('here')
+        fd.append(
+          'image',
+          inputRef.current.files[i],
+          inputRef.current.files[i].name
+        )
+
+        fetch(
+          'https://api.imgbb.com/1/upload?key=8676e9a76cca42179cbd43407440d4b8&expiration=15552000',
+          {
+            method: 'post',
+            body: fd,
+          }
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            console.log(data)
+
+            setImages((prev) =>
+              Array.from(new Set(prev.concat(data.data.image.url)))
+            )
+          })
+          .catch((error) => console.log(error))
+      }
     }
   }
 
@@ -75,6 +114,18 @@ const CommentEdit = () => {
           { value: 5 },
         ]}
       />
+      <input
+        type="file"
+        accept="image/*"
+        ref={inputRef}
+        multiple
+        onChange={handleChange}
+      />
+      <div className="flex">
+        {images &&
+          images.length > 0 &&
+          images.map((image, idx) => <AutoSizeImage src={image} key={idx} />)}
+      </div>
     </div>
   )
 }
